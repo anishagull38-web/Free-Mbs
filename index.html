@@ -1,1 +1,96 @@
 
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant AI</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+body{background:#101827;color:white;font-family:Arial;text-align:center;padding:20px}
+h1{color:#42d9ff}
+button,input{padding:13px;margin:8px;border-radius:9px;border:0;font-size:16px}
+button{background:#087cff;color:white}
+input{width:85%;max-width:300px}
+video{width:100%;max-width:500px;background:#000;border-radius:12px;margin-top:15px}
+#status{color:#42d9ff}
+</style>
+</head>
+<body>
+<h1>Assistant AI</h1>
+<p>Private Live Camera System</p>
+<p id="status">Choose your device mode</p>
+
+<button onclick="startCamera()">CAMERA PHONE</button>
+<button onclick="showViewer()">VIEWER PHONE</button>
+
+<div id="cameraBox" hidden>
+<p>Keep this page open while sharing.</p>
+<video id="local" autoplay muted playsinline></video>
+<p>Your Camera ID:</p>
+<h2 id="myid">Connecting...</h2>
+<p>Enter this ID on your viewer phone.</p>
+<button onclick="stopCamera()">STOP CAMERA</button>
+</div>
+
+<div id="viewerBox" hidden>
+<input id="remoteid" placeholder="Enter Camera ID">
+<button onclick="connectCamera()">CONNECT</button>
+<video id="remote" autoplay playsinline controls></video>
+</div>
+
+<script>
+let peer,stream,call;
+
+function startCamera(){
+ document.getElementById("cameraBox").hidden=false;
+ document.getElementById("viewerBox").hidden=true;
+ document.getElementById("status").textContent="Requesting camera permission...";
+ navigator.mediaDevices.getUserMedia({video:true,audio:false})
+ .then(s=>{
+  stream=s;
+  document.getElementById("local").srcObject=s;
+  peer=new Peer();
+  peer.on("open",id=>{
+   document.getElementById("myid").textContent=id;
+   document.getElementById("status").textContent="Camera is active";
+  });
+  peer.on("call",c=>{
+   call=c;
+   c.answer(stream);
+  });
+ })
+ .catch(e=>document.getElementById("status").textContent="Camera error: "+e.message);
+}
+
+function showViewer(){
+ document.getElementById("viewerBox").hidden=false;
+ document.getElementById("cameraBox").hidden=true;
+ document.getElementById("status").textContent="Enter the camera phone ID";
+}
+
+function connectCamera(){
+ let id=document.getElementById("remoteid").value.trim();
+ if(!id)return alert("Enter Camera ID");
+ peer=new Peer();
+ peer.on("open",()=>{
+  call=peer.call(id,null);
+  call.on("stream",s=>{
+   document.getElementById("remote").srcObject=s;
+   document.getElementById("status").textContent="Live camera connected";
+  });
+  call.on("error",e=>document.getElementById("status").textContent=e.message);
+ });
+}
+
+function stopCamera(){
+ if(call)call.close();
+ if(stream)stream.getTracks().forEach(t=>t.stop());
+ if(peer)peer.destroy();
+ document.getElementById("local").srcObject=null;
+ document.getElementById("status").textContent="Camera stopped";
+}
+</script>
+</body>
+</html>
